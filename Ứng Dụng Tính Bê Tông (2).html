@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dự Toán Bê Tông</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load React, ReactDOM và Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Sửa lỗi hiển thị nền khi in PDF */
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { margin: 15mm; }
+        }
+    </style>
+</head>
+<body class="bg-[#F4F7F9]">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const PlusIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        );
+
+        const TrashIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        );
+
+        const LayersIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 12 12 17 22 12"></polyline>
+            <polyline points="2 17 12 22 22 17"></polyline>
+          </svg>
+        );
+
+        const BoxIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        );
+
+        const SettingsIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        );
+
+        const CalculatorIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+            <line x1="8" y1="6" x2="16" y2="6"></line>
+            <line x1="16" y1="14" x2="16" y2="14.01"></line>
+            <line x1="16" y1="18" x2="16" y2="18.01"></line>
+            <line x1="12" y1="14" x2="12" y2="14.01"></line>
+            <line x1="12" y1="18" x2="12" y2="18.01"></line>
+            <line x1="8" y1="14" x2="8" y2="14.01"></line>
+            <line x1="8" y1="18" x2="8" y2="18.01"></line>
+          </svg>
+        );
+
+        const PrinterIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        );
+
+        const InputField = ({ label, value, onChange, placeholder = "0.0", min = "0" }) => (
+          <div className="flex flex-col">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">{label}</label>
+            <input
+              type="number"
+              value={value}
+              onChange={onChange}
+              placeholder={placeholder}
+              min={min} 
+              step="0.01"
+              className="w-full h-12 rounded-xl border-slate-200 border bg-white px-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-slate-800 shadow-sm"
+            />
+          </div>
+        );
+
+        function ConcreteCalculator() {
+          // State quản lý thông số dự án
+          const [projectName, setProjectName] = useState('');
+
+          // State quản lý thông số sàn
+          const [floors, setFloors] = useState([
+            { id: 1, name: 'Sàn S1', length: '', width: '', thickness: '' }
+          ]);
+
+          // State quản lý danh sách dầm
+          const [beams, setBeams] = useState([
+            { id: 1, name: 'Dầm D1', length: '', width: '', height: '', qty: 1 }
+          ]);
+
+          // State quản lý cài đặt tính toán
+          const [settings, setSettings] = useState({
+            wasteFactor: 2.5, 
+            manualDeduction: '' 
+          });
+
+          const handleFloorChange = (id, field, value) => {
+            setFloors(prev => prev.map(floor => floor.id === id ? { ...floor, [field]: value } : floor));
+          };
+
+          const addFloor = () => {
+            const newId = floors.length > 0 ? Math.max(...floors.map(f => f.id)) + 1 : 1;
+            setFloors(prev => [...prev, { id: newId, name: `Sàn S${newId}`, length: '', width: '', thickness: '' }]);
+          };
+
+          const removeFloor = (id) => setFloors(prev => prev.filter(floor => floor.id !== id));
+
+          const handleBeamChange = (id, field, value) => {
+            setBeams(prev => prev.map(beam => beam.id === id ? { ...beam, [field]: value } : beam));
+          };
+
+          const addBeam = () => {
+            const newId = beams.length > 0 ? Math.max(...beams.map(b => b.id)) + 1 : 1;
+            setBeams(prev => [...prev, { id: newId, name: `Dầm D${newId}`, length: '', width: '', height: '', qty: 1 }]);
+          };
+
+          const removeBeam = (id) => setBeams(prev => prev.filter(beam => beam.id !== id));
+
+          const results = useMemo(() => {
+            let floorVolume = 0;
+            const floorDetails = floors.map(floor => {
+              const l = parseFloat(floor.length) || 0;
+              const w = parseFloat(floor.width) || 0;
+              const t = parseFloat(floor.thickness) || 0;
+              const vol = l * w * t;
+              floorVolume += vol;
+              return { ...floor, calculatedVolume: vol };
+            });
+
+            let beamsVolume = 0;
+            const beamDetails = beams.map(beam => {
+              const l = parseFloat(beam.length) || 0;
+              const w = parseFloat(beam.width) || 0; 
+              const h = parseFloat(beam.height) || 0; 
+              const qty = parseInt(beam.qty) || 0;
+              
+              const vol = l * w * h * qty;
+              beamsVolume += vol;
+              return { ...beam, calculatedVolume: vol };
+            });
+
+            const manualDeductionVol = parseFloat(settings.manualDeduction) || 0;
+            const rawSubTotal = floorVolume + beamsVolume;
+            const subTotal = Math.max(0, rawSubTotal - manualDeductionVol); 
+            const waste = subTotal * ((parseFloat(settings.wasteFactor) || 0) / 100);
+            const grandTotal = subTotal + waste;
+
+            return {
+              floorVolume,
+              floorDetails,
+              beamsVolume,
+              manualDeductionVol,
+              subTotal,
+              waste,
+              grandTotal,
+              beamDetails
+            };
+          }, [floors, beams, settings]);
+
+          return (
+            <div className="min-h-screen pb-28 lg:pb-12 font-sans text-slate-800 selection:bg-blue-200 print:bg-white print:pb-0">
+              
+              {/* --- GIAO DIỆN ỨNG DỤNG --- */}
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 lg:pt-10 print:hidden">
+                
+                <header className="mb-6 lg:mb-10 flex flex-col md:flex-row md:items-start justify-between gap-5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-slate-100 shrink-0 mt-1">
+                       <CalculatorIcon />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Dự Toán Bê Tông</h1>
+                      <input 
+                         type="text" 
+                         value={projectName}
+                         onChange={(e) => setProjectName(e.target.value)}
+                         placeholder="Nhập tên hạng mục công trình (tùy chọn)..."
+                         className="mt-3 w-full md:w-[350px] h-11 rounded-xl border-slate-200 border bg-white px-3 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-slate-700 shadow-sm"
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => window.print()}
+                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
+                  >
+                    <PrinterIcon /> Xuất Báo Cáo PDF
+                  </button>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                  
+                  {/* Cột trái: Nhập liệu */}
+                  <div className="lg:col-span-8 space-y-6">
+                    
+                    <section className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                      <div className="bg-slate-50/50 border-b border-slate-100 p-4 md:px-6 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
+                          <div className="p-1.5 bg-blue-100 rounded-lg"><LayersIcon /></div>
+                          Thông số Sàn
+                        </h2>
+                        <button 
+                          onClick={addFloor}
+                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                        >
+                          <PlusIcon /> <span className="hidden sm:inline">Thêm sàn</span>
+                        </button>
+                      </div>
+                      
+                      <div className="p-4 md:p-6">
+                        {floors.length === 0 ? (
+                          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                            <p className="text-slate-400 font-medium">Chưa có sàn nào được thêm.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {floors.map((floor, index) => (
+                              <div key={floor.id} className="relative bg-[#FAFCFF] border border-blue-100 rounded-2xl p-4 md:p-5 transition-shadow hover:shadow-md">
+                                <div className="flex justify-between items-center mb-4">
+                                  <span className="font-bold text-slate-700 text-sm bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">{floor.name}</span>
+                                  <button onClick={() => removeFloor(floor.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                                  <InputField label="Dài (m)" value={floor.length} onChange={(e) => handleFloorChange(floor.id, 'length', e.target.value)} />
+                                  <InputField label="Rộng (m)" value={floor.width} onChange={(e) => handleFloorChange(floor.id, 'width', e.target.value)} />
+                                  <div className="col-span-2 md:col-span-1">
+                                    <InputField label="Dày (m)" value={floor.thickness} onChange={(e) => handleFloorChange(floor.id, 'thickness', e.target.value)} />
+                                  </div>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-blue-100/60 flex justify-between items-center">
+                                  <span className="text-xs font-semibold text-slate-400 uppercase">Thể tích</span>
+                                  <span className="font-bold text-blue-600 text-base">
+                                    {results.floorDetails[index]?.calculatedVolume > 0 ? `${results.floorDetails[index].calculatedVolume.toFixed(3)} m³` : '0.000 m³'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {results.floorVolume > 0 && (
+                          <div className="mt-5 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex justify-between items-center">
+                            <span className="font-bold text-blue-900">Tổng thể tích Sàn:</span>
+                            <span className="font-black text-xl text-blue-600">{results.floorVolume.toFixed(3)} m³</span>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                      <div className="bg-slate-50/50 border-b border-slate-100 p-4 md:px-6 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
+                          <div className="p-1.5 bg-orange-100 rounded-lg"><BoxIcon /></div>
+                          Thông số Dầm
+                        </h2>
+                        <button 
+                          onClick={addBeam}
+                          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm"
+                        >
+                          <PlusIcon /> <span className="hidden sm:inline">Thêm dầm</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4 md:p-6">
+                        {beams.length === 0 ? (
+                          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                            <p className="text-slate-400 font-medium">Chưa có dầm nào được thêm.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {beams.map((beam, index) => (
+                              <div key={beam.id} className="relative bg-[#FFFBF8] border border-orange-100 rounded-2xl p-4 md:p-5 transition-shadow hover:shadow-md">
+                                <div className="flex justify-between items-center mb-4">
+                                  <span className="font-bold text-slate-700 text-sm bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">{beam.name}</span>
+                                  <button onClick={() => removeBeam(beam.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
+                                    <TrashIcon />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                                  <InputField label="Dài (m)" value={beam.length} onChange={(e) => handleBeamChange(beam.id, 'length', e.target.value)} />
+                                  <InputField label="Rộng (m)" value={beam.width} onChange={(e) => handleBeamChange(beam.id, 'width', e.target.value)} />
+                                  <InputField label="Cao (m)" value={beam.height} onChange={(e) => handleBeamChange(beam.id, 'height', e.target.value)} />
+                                  <InputField label="Số lượng" value={beam.qty} onChange={(e) => handleBeamChange(beam.id, 'qty', e.target.value)} min="1" placeholder="1" />
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-orange-100/60 flex justify-between items-center">
+                                  <span className="text-xs font-semibold text-slate-400 uppercase">Thể tích</span>
+                                  <span className="font-bold text-orange-600 text-base">
+                                    {results.beamDetails[index].calculatedVolume > 0 ? `${results.beamDetails[index].calculatedVolume.toFixed(3)} m³` : '0.000 m³'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {results.beamsVolume > 0 && (
+                          <div className="mt-5 p-4 bg-orange-50/50 border border-orange-100 rounded-2xl flex justify-between items-center">
+                            <span className="font-bold text-orange-900">Tổng thể tích Dầm:</span>
+                            <span className="font-black text-xl text-orange-600">{results.beamsVolume.toFixed(3)} m³</span>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 md:p-6">
+                      <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2.5">
+                        <div className="p-1.5 bg-slate-100 rounded-lg"><SettingsIcon /></div>
+                        Cài đặt tính toán
+                      </h2>
+                      
+                      <div className="space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div>
+                            <label className="font-bold text-slate-700 text-sm">Hệ số hao hụt bê tông</label>
+                            <p className="text-xs text-slate-500 mt-0.5">Bù hao hụt khi đổ, dính bơm, vương vãi.</p>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={settings.wasteFactor}
+                              onChange={(e) => setSettings(prev => ({...prev, wasteFactor: e.target.value}))}
+                              className="w-full sm:w-28 h-11 rounded-xl border-slate-200 border bg-white pl-4 pr-8 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-800"
+                              min="0" step="0.5"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div>
+                            <label className="font-bold text-slate-700 text-sm">Thể tích trừ thủ công</label>
+                            <p className="text-xs text-slate-500 mt-0.5">Trừ giao cột, lỗ rỗng sàn, vv...</p>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={settings.manualDeduction}
+                              onChange={(e) => setSettings(prev => ({...prev, manualDeduction: e.target.value}))}
+                              placeholder="0.0"
+                              className="w-full sm:w-32 h-11 rounded-xl border-slate-200 border bg-white pl-4 pr-10 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-800"
+                              min="0" step="0.1"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">m³</span>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                  </div>
+
+                  {/* Cột phải: Kết quả */}
+                  <div className="lg:col-span-4 relative">
+                    <div className="bg-slate-900 rounded-3xl shadow-2xl p-6 text-white sticky top-8 hidden lg:block overflow-hidden relative">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+
+                      <h2 className="text-xl font-bold mb-6 flex items-center gap-2">Tổng Hợp Kết Quả</h2>
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                          <span className="text-slate-300 text-sm font-medium flex items-center gap-2"><LayersIcon /> Tổng Sàn</span>
+                          <span className="text-base font-bold">{results.floorVolume.toFixed(3)} <span className="text-xs font-normal text-slate-400">m³</span></span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                          <span className="text-slate-300 text-sm font-medium flex items-center gap-2"><BoxIcon /> Tổng Dầm</span>
+                          <span className="text-base font-bold">{results.beamsVolume.toFixed(3)} <span className="text-xs font-normal text-slate-400">m³</span></span>
+                        </div>
+
+                        {results.manualDeductionVol > 0 && (
+                          <div className="flex justify-between items-center p-2 border-b border-slate-700/50 border-dashed">
+                            <span className="text-slate-400 text-sm">Trừ thủ công</span>
+                            <span className="text-sm font-bold text-red-400">-{results.manualDeductionVol.toFixed(3)} m³</span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center p-2 border-b border-slate-700/50 border-dashed">
+                          <span className="text-slate-400 text-sm">Thể tích thực tế</span>
+                          <span className="text-sm font-bold text-blue-300">{results.subTotal.toFixed(3)} m³</span>
+                        </div>
+
+                        <div className="flex justify-between items-center p-2">
+                          <span className="text-slate-400 text-sm">Hao hụt ({settings.wasteFactor || 0}%)</span>
+                          <span className="text-sm font-bold text-orange-300">+{results.waste.toFixed(3)} m³</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 p-5 bg-gradient-to-br from-slate-800 to-slate-800/40 rounded-2xl border border-slate-700 shadow-inner text-center">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-widest font-bold mb-2">Tổng thể tích cần đặt</div>
+                        <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm">
+                          {results.grandTotal.toFixed(2)} <span className="text-2xl text-slate-400 font-semibold tracking-normal">m³</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* --- GIAO DIỆN IN PDF --- */}
+              <div className="hidden print:block print:p-8 print:w-full print:max-w-none text-black bg-white">
+                <div className="text-center mb-8">
+                  <h1 className="text-2xl font-bold uppercase mb-2">Báo Cáo Khối Lượng Bê Tông</h1>
+                  <p className="text-sm">Ngày lập: {new Date().toLocaleDateString('vi-VN')}</p>
+                  {projectName && <p className="text-lg font-bold mt-2 uppercase">Hạng mục công trình: {projectName}</p>}
+                </div>
+
+                {floors.length > 0 && (
+                  <div className="mb-6 print:break-inside-avoid">
+                    <h2 className="text-base font-bold mb-2 uppercase border-b-2 border-black pb-1">1. Hạng mục Sàn</h2>
+                    <table className="w-full text-sm border-collapse border border-gray-800">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-800 p-2 text-center w-12">STT</th>
+                          <th className="border border-gray-800 p-2 text-left">Tên cấu kiện</th>
+                          <th className="border border-gray-800 p-2 text-right">Dài (m)</th>
+                          <th className="border border-gray-800 p-2 text-right">Rộng (m)</th>
+                          <th className="border border-gray-800 p-2 text-right">Dày (m)</th>
+                          <th className="border border-gray-800 p-2 text-right font-bold w-32">Thể tích (m³)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.floorDetails.map((f, i) => (
+                          <tr key={f.id}>
+                            <td className="border border-gray-800 p-2 text-center">{i + 1}</td>
+                            <td className="border border-gray-800 p-2">{f.name}</td>
+                            <td className="border border-gray-800 p-2 text-right">{f.length || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right">{f.width || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right">{f.thickness || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right font-bold">{f.calculatedVolume > 0 ? f.calculatedVolume.toFixed(3) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gray-50 font-bold">
+                          <td colSpan="5" className="border border-gray-800 p-2 text-right uppercase">Tổng thể tích Sàn:</td>
+                          <td className="border border-gray-800 p-2 text-right">{results.floorVolume.toFixed(3)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {beams.length > 0 && (
+                  <div className="mb-6 print:break-inside-avoid">
+                    <h2 className="text-base font-bold mb-2 uppercase border-b-2 border-black pb-1">2. Hạng mục Dầm</h2>
+                    <table className="w-full text-sm border-collapse border border-gray-800">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-800 p-2 text-center w-12">STT</th>
+                          <th className="border border-gray-800 p-2 text-left">Tên cấu kiện</th>
+                          <th className="border border-gray-800 p-2 text-right">Dài (m)</th>
+                          <th className="border border-gray-800 p-2 text-right">Rộng (m)</th>
+                          <th className="border border-gray-800 p-2 text-right">Cao (m)</th>
+                          <th className="border border-gray-800 p-2 text-center">SL</th>
+                          <th className="border border-gray-800 p-2 text-right font-bold w-32">Thể tích (m³)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.beamDetails.map((b, i) => (
+                          <tr key={b.id}>
+                            <td className="border border-gray-800 p-2 text-center">{i + 1}</td>
+                            <td className="border border-gray-800 p-2">{b.name}</td>
+                            <td className="border border-gray-800 p-2 text-right">{b.length || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right">{b.width || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right">{b.height || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-center">{b.qty || '-'}</td>
+                            <td className="border border-gray-800 p-2 text-right font-bold">{b.calculatedVolume > 0 ? b.calculatedVolume.toFixed(3) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gray-50 font-bold">
+                          <td colSpan="6" className="border border-gray-800 p-2 text-right uppercase">Tổng thể tích Dầm:</td>
+                          <td className="border border-gray-800 p-2 text-right">{results.beamsVolume.toFixed(3)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                <div className="mb-12 print:break-inside-avoid">
+                    <h2 className="text-base font-bold mb-2 uppercase border-b-2 border-black pb-1">3. Tổng hợp kết quả</h2>
+                    <div className="flex justify-end">
+                      <table className="w-2/3 text-sm border-collapse border border-gray-800">
+                         <tbody>
+                           <tr>
+                             <td className="border border-gray-800 p-2 font-medium">Tổng thể tích thiết kế (Sàn + Dầm)</td>
+                             <td className="border border-gray-800 p-2 text-right font-bold w-32">{(results.floorVolume + results.beamsVolume).toFixed(3)} m³</td>
+                           </tr>
+                           {results.manualDeductionVol > 0 && (
+                             <tr>
+                               <td className="border border-gray-800 p-2 font-medium">Trừ thủ công (lỗ rỗng, v.v...)</td>
+                               <td className="border border-gray-800 p-2 text-right font-bold w-32">-{results.manualDeductionVol.toFixed(3)} m³</td>
+                             </tr>
+                           )}
+                           <tr>
+                             <td className="border border-gray-800 p-2 font-medium">Thể tích thực tế</td>
+                             <td className="border border-gray-800 p-2 text-right font-bold w-32">{results.subTotal.toFixed(3)} m³</td>
+                           </tr>
+                           <tr>
+                             <td className="border border-gray-800 p-2 font-medium">Hệ số hao hụt tính thêm ({settings.wasteFactor || 0}%)</td>
+                             <td className="border border-gray-800 p-2 text-right font-bold w-32">+{results.waste.toFixed(3)} m³</td>
+                           </tr>
+                           <tr className="bg-gray-200">
+                             <td className="border border-gray-800 p-2 font-bold uppercase text-base text-right">Tổng bê tông cần đặt:</td>
+                             <td className="border border-gray-800 p-2 text-right font-black text-lg w-32">{results.grandTotal.toFixed(2)} m³</td>
+                           </tr>
+                         </tbody>
+                      </table>
+                    </div>
+                </div>
+              </div>
+
+              {/* Thanh dưới cùng Mobile */}
+              <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50 lg:hidden flex justify-between items-center print:hidden">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Cần đặt (Hao hụt {settings.wasteFactor}%)</span>
+                  <div className="text-2xl font-black text-slate-900">
+                    {results.grandTotal.toFixed(2)} <span className="text-sm font-semibold text-slate-500">m³</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="bg-blue-600 active:bg-blue-700 text-white p-3 px-5 rounded-2xl font-bold shadow-lg shadow-blue-600/30"
+                >
+                  Lên trên đầu
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ConcreteCalculator />);
+    </script>
+</body>
+</html>
