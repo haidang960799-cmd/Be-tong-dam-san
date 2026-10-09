@@ -11,6 +11,41 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.setupFirebase = async () => {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            
+            if (!firebaseConfig) return;
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const auth = getAuth(app);
+                
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (token) await signInWithCustomToken(auth, token);
+                else await signInAnonymously(auth);
+
+                window.firebaseDb = db;
+                window.firebaseAppId = appId;
+                window.firebaseUserId = auth.currentUser.uid;
+                window.firebaseDoc = doc;
+                window.firebaseSetDoc = setDoc;
+                window.firebaseGetDoc = getDoc;
+                
+                window.dispatchEvent(new CustomEvent('firebase-auth-ready'));
+            } catch (error) {
+                console.error("Firebase init error:", error);
+            }
+        };
+        window.setupFirebase();
+    </script>
+
     <style>
         @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -22,7 +57,15 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo } = React;
+        const { useState, useMemo, useEffect } = React;
+
+        const SaveIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        );
+
+        const DownloadIcon = () => (
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        );
 
         const PlusIcon = () => (
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -77,6 +120,54 @@
 
         function ConcreteCalculator() {
           const [projectName, setProjectName] = useState('');
+          
+          const [toastMsg, setToastMsg] = useState('');
+          const [isAuthReady, setIsAuthReady] = useState(false);
+
+          useEffect(() => {
+              const handleAuthReady = () => setIsAuthReady(true);
+              if (window.firebaseUserId) setIsAuthReady(true);
+              else window.addEventListener('firebase-auth-ready', handleAuthReady);
+              return () => window.removeEventListener('firebase-auth-ready', handleAuthReady);
+          }, []);
+
+          const showToast = (message) => {
+              setToastMsg(message);
+              setTimeout(() => setToastMsg(''), 3000);
+          };
+
+          const saveProject = async () => {
+              if (!window.firebaseUserId) return showToast("Chưa kết nối máy chủ");
+              try {
+                  const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'users', window.firebaseUserId, 'projects', 'saved_data');
+                  await window.firebaseSetDoc(docRef, { projectName, floors, beams, columns, deductions, settings });
+                  showToast('Đã lưu dữ liệu thành công!');
+              } catch (error) {
+                  showToast('Lỗi khi lưu dữ liệu!');
+              }
+          };
+
+          const loadProject = async () => {
+              if (!window.firebaseUserId) return showToast("Chưa kết nối máy chủ");
+              try {
+                  const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'users', window.firebaseUserId, 'projects', 'saved_data');
+                  const snap = await window.firebaseGetDoc(docRef);
+                  if (snap.exists()) {
+                      const data = snap.data();
+                      if(data.projectName !== undefined) setProjectName(data.projectName);
+                      if(data.floors) setFloors(data.floors);
+                      if(data.beams) setBeams(data.beams);
+                      if(data.columns) setColumns(data.columns);
+                      if(data.deductions) setDeductions(data.deductions);
+                      if(data.settings) setSettings(data.settings);
+                      showToast('Đã tải bản lưu gần nhất!');
+                  } else {
+                      showToast('Không tìm thấy bản lưu nào!');
+                  }
+              } catch (error) {
+                  showToast('Lỗi khi tải dữ liệu!');
+              }
+          };
 
           const [floors, setFloors] = useState([
             { id: 1, name: 'Sàn S1', length: '', width: '', thickness: '' }
@@ -215,12 +306,26 @@
                       />
                     </div>
                   </div>
-                  <button 
-                    onClick={() => window.print()}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
-                  >
-                    <PrinterIcon /> Xuất Báo Cáo PDF
-                  </button>
+                  
+                  {}
+                  <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2">
+                    {isAuthReady && (
+                        <div className="flex w-full sm:w-auto gap-2">
+                            <button onClick={loadProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
+                                <DownloadIcon /> Tải
+                            </button>
+                            <button onClick={saveProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
+                                <SaveIcon /> Lưu
+                            </button>
+                        </div>
+                    )}
+                    <button 
+                      onClick={() => window.print()}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
+                    >
+                      <PrinterIcon /> Xuất Báo Cáo PDF
+                    </button>
+                  </div>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
@@ -705,6 +810,13 @@
                   Lên trên đầu
                 </button>
               </div>
+
+              {}
+              {toastMsg && (
+                  <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-[100] font-medium text-sm flex items-center gap-2 animate-[bounce_0.3s_ease-out]">
+                      {toastMsg}
+                  </div>
+              )}
             </div>
           );
         }
