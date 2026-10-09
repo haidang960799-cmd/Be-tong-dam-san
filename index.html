@@ -4,47 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> khối lượng Bê Tông</title>
+    <title>Dự Toán Bê Tông</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        window.setupFirebase = async () => {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            
-            if (!firebaseConfig) return;
-
-            try {
-                const app = initializeApp(firebaseConfig);
-                const db = getFirestore(app);
-                const auth = getAuth(app);
-                
-                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                if (token) await signInWithCustomToken(auth, token);
-                else await signInAnonymously(auth);
-
-                window.firebaseDb = db;
-                window.firebaseAppId = appId;
-                window.firebaseUserId = auth.currentUser.uid;
-                window.firebaseDoc = doc;
-                window.firebaseSetDoc = setDoc;
-                window.firebaseGetDoc = getDoc;
-                
-                window.dispatchEvent(new CustomEvent('firebase-auth-ready'));
-            } catch (error) {
-                console.error("Firebase init error:", error);
-            }
-        };
-        window.setupFirebase();
-    </script>
 
     <style>
         @media print {
@@ -122,38 +87,27 @@
           const [projectName, setProjectName] = useState('');
           
           const [toastMsg, setToastMsg] = useState('');
-          const [isAuthReady, setIsAuthReady] = useState(false);
-
-          useEffect(() => {
-              const handleAuthReady = () => setIsAuthReady(true);
-              if (window.firebaseUserId) setIsAuthReady(true);
-              else window.addEventListener('firebase-auth-ready', handleAuthReady);
-              return () => window.removeEventListener('firebase-auth-ready', handleAuthReady);
-          }, []);
 
           const showToast = (message) => {
               setToastMsg(message);
               setTimeout(() => setToastMsg(''), 3000);
           };
 
-          const saveProject = async () => {
-              if (!window.firebaseUserId) return showToast("Chưa kết nối máy chủ");
+          const saveProject = () => {
               try {
-                  const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'users', window.firebaseUserId, 'projects', 'saved_data');
-                  await window.firebaseSetDoc(docRef, { projectName, floors, beams, columns, deductions, settings });
-                  showToast('Đã lưu dữ liệu thành công!');
+                  const dataToSave = { projectName, floors, beams, columns, deductions, settings };
+                  localStorage.setItem('concrete_app_data', JSON.stringify(dataToSave));
+                  showToast('Đã lưu dữ liệu vào máy thành công!');
               } catch (error) {
                   showToast('Lỗi khi lưu dữ liệu!');
               }
           };
 
-          const loadProject = async () => {
-              if (!window.firebaseUserId) return showToast("Chưa kết nối máy chủ");
+          const loadProject = () => {
               try {
-                  const docRef = window.firebaseDoc(window.firebaseDb, 'artifacts', window.firebaseAppId, 'users', window.firebaseUserId, 'projects', 'saved_data');
-                  const snap = await window.firebaseGetDoc(docRef);
-                  if (snap.exists()) {
-                      const data = snap.data();
+                  const savedData = localStorage.getItem('concrete_app_data');
+                  if (savedData) {
+                      const data = JSON.parse(savedData);
                       if(data.projectName !== undefined) setProjectName(data.projectName);
                       if(data.floors) setFloors(data.floors);
                       if(data.beams) setBeams(data.beams);
@@ -162,7 +116,7 @@
                       if(data.settings) setSettings(data.settings);
                       showToast('Đã tải bản lưu gần nhất!');
                   } else {
-                      showToast('Không tìm thấy bản lưu nào!');
+                      showToast('Không tìm thấy bản lưu nào trên máy này!');
                   }
               } catch (error) {
                   showToast('Lỗi khi tải dữ liệu!');
@@ -307,18 +261,15 @@
                     </div>
                   </div>
                   
-                  {}
                   <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2">
-                    {isAuthReady && (
-                        <div className="flex w-full sm:w-auto gap-2">
-                            <button onClick={loadProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
-                                <DownloadIcon /> Tải
-                            </button>
-                            <button onClick={saveProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
-                                <SaveIcon /> Lưu
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex w-full sm:w-auto gap-2">
+                        <button onClick={loadProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
+                            <DownloadIcon /> Tải
+                        </button>
+                        <button onClick={saveProject} className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95">
+                            <SaveIcon /> Lưu
+                        </button>
+                    </div>
                     <button 
                       onClick={() => window.print()}
                       className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
